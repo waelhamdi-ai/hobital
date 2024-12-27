@@ -1,18 +1,13 @@
-
 <nav class="nav-dashboard">
     <div class="nav-left">
-        <a href="/" class="logo">
-            <img src="{{ url_for('static', filename='images/logo3.png') }}" alt="Logo">
-        </a>
+        <a href="{{ url_for('dashboard') }}" class="nav-title">Dashboard</a>
     </div>
     <div class="nav-right">
         <div class="user-profile">
-            <img src="{{ session['profile_picture'] or url_for('static', filename='images/default_profile.jpg') }}" 
-                 alt="Profile" 
-                 class="profile-pic">
+            <img src="{{ profile_picture }}" alt="Profile Picture" class="profile-img">
             <div class="dropdown-menu">
-                <a href="/settings">Settings</a>
-                <a href="/logout">Logout</a>
+                <a href="{{ url_for('settings') }}">Settings</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
             </div>
         </div>
     </div>
