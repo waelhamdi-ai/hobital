@@ -792,53 +792,6 @@ def upload_medical_image():
             "message": f"Error uploading image: {str(e)}"
         }), 500
 
-# Add new route for doctor confirmation
-@app.route('/confirm_diagnosis', methods=['POST'])
-def confirm_diagnosis():
-    if 'user_email' not in session or session['user_role'] != 'doctor':
-        return jsonify({"success": False, "message": "Unauthorized"}), 401
-
-    try:
-        data = request.get_json()
-        image_id = data.get('image_id')
-        diagnosis = data.get('diagnosis')
-        client_email = data.get('client_email')  # Get client email from request
-
-        if not all([image_id, diagnosis, client_email]):
-            return jsonify({"success": False, "message": "Missing required data"}), 400
-
-        # First, get the client's document
-        clients = db.collection('users').where('email', '==', client_email).limit(1).stream()
-        client_doc = next(clients, None)
-        
-        if not client_doc:
-            return jsonify({"success": False, "message": "Client not found"}), 404
-
-        # Now update the specific image in the client's medical_images subcollection
-        try:
-            db.collection('users').document(client_doc.id)\
-              .collection('medical_images').document(image_id)\
-              .update({
-                  'doctor_confirmed': True,
-                  'doctor_diagnosis': diagnosis,
-                  'confirmed_by': session['user_email'],
-                  'confirmation_date': firestore.SERVER_TIMESTAMP
-              })
-
-            return jsonify({
-                "success": True,
-                "message": "Diagnosis confirmed successfully"
-            })
-        except Exception as e:
-            print(f"Error updating image: {str(e)}")
-            return jsonify({"success": False, "message": "Error updating image"}), 500
-
-    except Exception as e:
-        print(f"Confirmation error: {str(e)}")
-        return jsonify({
-            "success": False,
-            "message": f"Error confirming diagnosis: {str(e)}"
-        }), 500
 
 # Add new route for doctor confirmation
 @app.route('/confirm_diagnosis', methods=['POST'])
@@ -1136,5 +1089,7 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
 
 
