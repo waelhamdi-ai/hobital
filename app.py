@@ -21,6 +21,7 @@ else:
     raise ValueError("FIREBASE_CREDS environment variable not set")
 db = firestore.client()
 
+# Initialize Cloudinary
 cloudinary.config(
     cloud_name = "dxvsu1ntf", 
     api_key = "234877946597699", 
@@ -731,6 +732,10 @@ def upload_medical_image():
         return jsonify({"success": False, "message": "No file selected"}), 400
 
     try:
+        # Ensure the uploads directory exists
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+
         # Save file temporarily and get image bytes for AI processing
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(medical_image.filename))
         medical_image.save(temp_path)
@@ -1087,4 +1092,3 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
-
