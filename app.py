@@ -12,13 +12,14 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
-
-# Initialize Firebase Admin SDK
-cred = credentials.Certificate('firebase-adminsdk.json')  # Make sure this file is in the right directory
-
-firebase_admin.initialize_app(cred)
+import json
+firebase_creds = os.getenv('FIREBASE_CREDS')
+if firebase_creds:
+    cred = credentials.Certificate(json.loads(firebase_creds))
+    firebase_admin.initialize_app(cred)
+else:
+    raise ValueError("FIREBASE_CREDS environment variable not set")
 db = firestore.client()
-
 # Initialize Cloudinary
 cloudinary.config(
     cloud_name = "dxvsu1ntf", 
@@ -1090,5 +1091,7 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
 
 
