@@ -22,6 +22,7 @@ else:
 db = firestore.client()
 
 # Initialize Cloudinary
+# Initialize Cloudinary
 cloudinary.config(
     cloud_name = "dxvsu1ntf", 
     api_key = "234877946597699", 
@@ -732,28 +733,19 @@ def upload_medical_image():
         return jsonify({"success": False, "message": "No file selected"}), 400
 
     try:
-        # Ensure the uploads directory exists
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-
-        # Save file temporarily and get image bytes for AI processing
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(medical_image.filename))
-        medical_image.save(temp_path)
-        
-        # Process image with AI model
-        with open(temp_path, 'rb') as img_file:
-            img_bytes = img_file.read()
-            processed_image = preprocess_image(img_bytes)
-            if processed_image is not None:
-                prediction = model.predict(processed_image)
-                predicted_class = categories[np.argmax(prediction)]
-                confidence = float(np.max(prediction))
-            else:
-                predicted_class = "Error processing image"
-                confidence = 0.0
+        # Read image bytes for AI processing
+        img_bytes = medical_image.read()
+        processed_image = preprocess_image(img_bytes)
+        if processed_image is not None:
+            prediction = model.predict(processed_image)
+            predicted_class = categories[np.argmax(prediction)]
+            confidence = float(np.max(prediction))
+        else:
+            predicted_class = "Error processing image"
+            confidence = 0.0
 
         # Upload to Cloudinary
-        upload_result = cloudinary.uploader.upload(temp_path,
+        upload_result = cloudinary.uploader.upload(medical_image,
             folder=f"medical_images/{session['user_email']}"
         )
         file_url = upload_result['secure_url']
@@ -772,10 +764,6 @@ def upload_medical_image():
             'status': 'pending_doctor_confirmation',
             'doctor_confirmed': False
         }
-
-        # Clean up temporary file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
 
         # Add to user's medical_images collection
         db.collection('users').document(user.uid)\
