@@ -732,19 +732,24 @@ def upload_medical_image():
         return jsonify({"success": False, "message": "No file selected"}), 400
 
     try:
-        # Read image bytes for AI processing
-        img_bytes = medical_image.read()
-        processed_image = preprocess_image(img_bytes)
-        if processed_image is not None:
-            prediction = model.predict(processed_image)
-            predicted_class = categories[np.argmax(prediction)]
-            confidence = float(np.max(prediction))
-        else:
-            predicted_class = "Error processing image"
-            confidence = 0.0
+        # Save file temporarily and get image bytes for AI processing
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(medical_image.filename))
+        medical_image.save(temp_path)
+        
+        # Process image with AI model
+        with open(temp_path, 'rb') as img_file:
+            img_bytes = img_file.read()
+            processed_image = preprocess_image(img_bytes)
+            if processed_image is not None:
+                prediction = model.predict(processed_image)
+                predicted_class = categories[np.argmax(prediction)]
+                confidence = float(np.max(prediction))
+            else:
+                predicted_class = "Error processing image"
+                confidence = 0.0
 
         # Upload to Cloudinary
-        upload_result = cloudinary.uploader.upload(medical_image,
+        upload_result = cloudinary.uploader.upload(temp_path,
             folder=f"medical_images/{session['user_email']}"
         )
         file_url = upload_result['secure_url']
@@ -764,6 +769,10 @@ def upload_medical_image():
             'doctor_confirmed': False
         }
 
+        # Clean up temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
         # Add to user's medical_images collection
         db.collection('users').document(user.uid)\
           .collection('medical_images').add(image_data)
@@ -781,6 +790,54 @@ def upload_medical_image():
         return jsonify({
             "success": False,
             "message": f"Error uploading image: {str(e)}"
+        }), 500
+
+# Add new route for doctor confirmation
+@app.route('/confirm_diagnosis', methods=['POST'])
+def confirm_diagnosis():
+    if 'user_email' not in session or session['user_role'] != 'doctor':
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    try:
+        data = request.get_json()
+        image_id = data.get('image_id')
+        diagnosis = data.get('diagnosis')
+        client_email = data.get('client_email')  # Get client email from request
+
+        if not all([image_id, diagnosis, client_email]):
+            return jsonify({"success": False, "message": "Missing required data"}), 400
+
+        # First, get the client's document
+        clients = db.collection('users').where('email', '==', client_email).limit(1).stream()
+        client_doc = next(clients, None)
+        
+        if not client_doc:
+            return jsonify({"success": False, "message": "Client not found"}), 404
+
+        # Now update the specific image in the client's medical_images subcollection
+        try:
+            db.collection('users').document(client_doc.id)\
+              .collection('medical_images').document(image_id)\
+              .update({
+                  'doctor_confirmed': True,
+                  'doctor_diagnosis': diagnosis,
+                  'confirmed_by': session['user_email'],
+                  'confirmation_date': firestore.SERVER_TIMESTAMP
+              })
+
+            return jsonify({
+                "success": True,
+                "message": "Diagnosis confirmed successfully"
+            })
+        except Exception as e:
+            print(f"Error updating image: {str(e)}")
+            return jsonify({"success": False, "message": "Error updating image"}), 500
+
+    except Exception as e:
+        print(f"Confirmation error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": f"Error confirming diagnosis: {str(e)}"
         }), 500
 
 # Add new route for doctor confirmation
