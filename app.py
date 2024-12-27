@@ -21,7 +21,6 @@ else:
     raise ValueError("FIREBASE_CREDS environment variable not set")
 db = firestore.client()
 
-# Initialize Cloudinary
 cloudinary.config(
     cloud_name = "dxvsu1ntf", 
     api_key = "234877946597699", 
@@ -273,13 +272,13 @@ def signup():
 
 @app.route('/client_dashboard')
 def client_dashboard():
-    if ('user_email' in session and session['user_role'] == 'patient'):
+    if 'user_email' in session and session['user_role'] == 'patient':
         try:
             user = auth.get_user_by_email(session['user_email'])
             user_doc = db.collection('users').document(user.uid).get()
-            if (user_doc.exists):
+            if user_doc.exists:
                 user_data = user_doc.to_dict()
-                profile_picture = user_data.get('profile_picture', None)
+                profile_picture = user_data.get('profile_picture', url_for('static', filename='images/default_profile.jpg'))
                 
                 # Fetch medical images
                 medical_images = []
@@ -291,20 +290,19 @@ def client_dashboard():
                 for img in images_ref:
                     img_data = img.to_dict()
                     img_data['upload_date'] = img_data['upload_date'].strftime('%Y-%m-%d %H:%M:%S')\
-                        if (img_data.get('upload_date')) else 'Unknown'
+                        if img_data.get('upload_date') else 'Unknown'
                     medical_images.append(img_data)
 
                 return render_template('client_dashboard.html',
-                                    profile_picture=profile_picture,
-                                    user_data=user_data,
-                                    medical_images=medical_images)
+                                       profile_picture=profile_picture,
+                                       user_data=user_data,
+                                       medical_images=medical_images)
         except Exception as e:
             print(f"Error in client dashboard: {str(e)}")
             session.pop('user_email', None)
             session.pop('user_role', None)
             return redirect(url_for('login'))
     return redirect(url_for('login'))
-
 
 @app.route('/patients')
 def patients():
@@ -345,7 +343,7 @@ def doctor_dashboard():
             user_doc = db.collection('users').document(user.uid).get()
             if user_doc.exists:
                 user_data = user_doc.to_dict()
-                profile_picture = user_data.get('profile_picture', None)
+                profile_picture = user_data.get('profile_picture', url_for('static', filename='images/default_profile.jpg'))
                 
                 # Fetch clients
                 clients = []
@@ -732,6 +730,10 @@ def upload_medical_image():
         return jsonify({"success": False, "message": "No file selected"}), 400
 
     try:
+        # Ensure the uploads directory exists
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+
         # Save file temporarily and get image bytes for AI processing
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(medical_image.filename))
         medical_image.save(temp_path)
@@ -954,7 +956,7 @@ def check_session():
 
 @app.route('/medical_records')
 def medical_records():
-    if 'user_email' not in session or session['user_role'] != 'client':
+    if 'user_email' not in session or session['user_role'] != 'patient':
         return redirect(url_for('login'))
 
     try:
@@ -1088,3 +1090,4 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
+
