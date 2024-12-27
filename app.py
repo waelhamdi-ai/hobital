@@ -12,13 +12,11 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 import io
-import json
-firebase_creds = os.getenv('FIREBASE_CREDS')
-if firebase_creds:
-    cred = credentials.Certificate(json.loads(firebase_creds))
-    firebase_admin.initialize_app(cred)
-else:
-    raise ValueError("FIREBASE_CREDS environment variable not set")
+
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate('firebase-adminsdk.json')  # Make sure this file is in the right directory
+
+firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 # Initialize Cloudinary
@@ -654,6 +652,7 @@ def upload_diagnostic_photo():
 
     return redirect(url_for('login'))
 
+
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if ('user_email' not in session):
@@ -731,6 +730,10 @@ def upload_medical_image():
         return jsonify({"success": False, "message": "No file selected"}), 400
 
     try:
+        # Ensure the uploads directory exists
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+
         # Save file temporarily and get image bytes for AI processing
         temp_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_filename(medical_image.filename))
         medical_image.save(temp_path)
@@ -790,7 +793,6 @@ def upload_medical_image():
             "success": False,
             "message": f"Error uploading image: {str(e)}"
         }), 500
-
 
 # Add new route for doctor confirmation
 @app.route('/confirm_diagnosis', methods=['POST'])
@@ -1088,7 +1090,5 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
 
 
