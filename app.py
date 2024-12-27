@@ -654,7 +654,6 @@ def upload_diagnostic_photo():
 
     return redirect(url_for('login'))
 
-
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if ('user_email' not in session):
