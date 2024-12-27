@@ -22,7 +22,6 @@ else:
 db = firestore.client()
 
 # Initialize Cloudinary
-# Initialize Cloudinary
 cloudinary.config(
     cloud_name = "dxvsu1ntf", 
     api_key = "234877946597699", 
@@ -1080,3 +1079,5 @@ def predict_diabetes():
 
 if __name__ == '__main__':    
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
